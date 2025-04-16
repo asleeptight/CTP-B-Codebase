@@ -1,0 +1,28 @@
+{
+  "interactions": {
+    "entry1": {
+      "timestamp": "2025-04-09T10:00:00",
+      "zone": "Zone A",
+      "game": "Guess the Pattern",
+      "result": "Success"
+    },
+    "entry2": {
+      "timestamp": "2025-04-09T10:15:00",
+      "zone": "Zone B",
+      "game": "Guess the Pattern",
+      "result": "Fail"
+    },
+    "entry3": {
+      "timestamp": "2025-04-09T11:00:00",
+      "zone": "Zone C",
+      "game": "Chase the Lights",
+      "result": "Success"
+    },
+    "entry4": {
+      "timestamp": "2025-04-09T11:00:00",
+      "zone": "Zone D",
+      "game": "Chase the Lights",
+      "result": "Fail"
+    }
+  }
+}
