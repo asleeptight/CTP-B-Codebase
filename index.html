@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Smart Textile Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f6f8;
+      padding: 20px;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+    }
+    .chart-container {
+      max-width: 800px;
+      margin: 30px auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 30px;
+      background: white;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    th, td {
+      padding: 12px;
+      border: 1px solid #ddd;
+    }
+    th {
+      background: #3498db;
+      color: white;
+    }
+    tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+  </style>
+</head>
+<body>
+  <h1>Smart Textile Dashboard</h1>
+  <button onclick="sendFakeData('Guess the Pattern')">🎮 Simulate "Guess the Pattern"</button>
+  <button onclick="sendFakeData('Chase the Lights')">💡 Simulate "Chase the Lights"</button>
+
+   
+  <label for="gameFilter">Filter by Game:</label>
+  <select id="gameFilter" onchange="filterByGame()">
+    <option value="All">All Games</option>
+    <option value="Guess the Pattern">Guess the Pattern</option>
+    <option value="Chasing the Lights">Chasing the Lights</option>
+  </select>
+
+  <div class="chart-container">
+    <canvas id="activityChart"></canvas>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Zone</th>
+        <th>Game</th>
+        <th>Result</th>
+      </tr>
+    </thead>
+    <tbody id="logTableBody"></tbody>
+  </table>
+
+  <script>
+    // ✅ Replace with YOUR Firebase Config if needed
+const firebaseConfig = {
+  apiKey: "AIzaSyD_g0C-FZTbYMMAomrDQX4v-PK6SGSNi7I",
+  authDomain: "smarttextiledashboard.firebaseapp.com",
+  databaseURL: "https://smarttextiledashboard-default-rtdb.firebaseio.com",
+  projectId: "smarttextiledashboard",
+  storageBucket: "smarttextiledashboard.appspot.com",
+  messagingSenderId: "492770915596",
+  appId: "1:492770915596:web:78616c1222f0fc4a0f8529",
+  measurementId: "G-RBWBK23ZM8"
+};
+
+
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const logTableBody = document.getElementById('logTableBody');
+    const ctx = document.getElementById('activityChart').getContext('2d');
+
+    let chartInstance = null;
+    let dailyCounts = {};
+
+    db.ref('interactions').on('value', snapshot => {
+      const data = snapshot.val();
+      console.log('📦 Firebase data:', data);
+      console.log("📦 Firebase returned:", data);
+      document.body.insertAdjacentHTML("beforeend", `<pre>Data:\n${JSON.stringify(data, null, 2)}</pre>`);
+      logTableBody.innerHTML = '';
+      dailyCounts = {};
+
+      if (!data) {
+        document.body.insertAdjacentHTML('beforeend', '<p>No data found.</p>');
+        return;
+      }
+
+      for (let key in data) {
+        const entry = data[key];
+        if (!entry.timestamp || !entry.zone || !entry.game || !entry.result) continue;
+
+        const row = document.createElement('tr');
+       
+        const formattedTime = new Date(entry.timestamp).toLocaleString("en-AU", {
+          weekday: 'short',
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+          timeZone: 'Australia/Sydney'
+});
+        row.innerHTML = `
+          <td>${formattedTime}</td>
+          <td>${entry.zone}</td>
+          <td>${entry.game}</td>
+          <td style="color:${entry.result === 'Success' ? 'green' : 'red'}">${entry.result}</td>
+
+        `;
+        logTableBody.appendChild(row);
+
+        const date = entry.timestamp.split('T')[0];
+        dailyCounts[date] = (dailyCounts[date] || 0) + 1;
+      }
+
+      renderChart(dailyCounts);
+    });
+
+    function renderChart(data) {
+      if (chartInstance) chartInstance.destroy();
+
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(data),
+          datasets: [{
+            label: 'Interactions Per Day',
+            data: Object.values(data),
+            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+            borderRadius: 5
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+    function sendFakeData(gameName) {
+       const newEntry = {
+        timestamp: new Date().toISOString(),
+        zone: "Zone " + String.fromCharCode(65 + Math.floor(Math.random() * 4)), // Zone A–D
+        game: gameName,
+        result: Math.random() < 0.5 ? "Success" : "Fail" // Random result
+  };
+
+  firebase.database().ref("interactions").push(newEntry)
+    .then(() => alert(`✅ Simulated: ${gameName} | ${newEntry.result}`))
+    .catch(err => console.error("❌ Error writing to Firebase:", err));
+}
+
+    
+  </script>
+
+</body>
+</html>
