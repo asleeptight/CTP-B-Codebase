@@ -3,7 +3,7 @@
 #include <SPI.h>
 
 #define HARDWARE_TYPE MD_MAX72XX::FC16_HW
-#define MAX_DEVICES 1 // number of led matrixes 
+#define MAX_DEVICES 1 // number of LED matrices
 // Defining pins for LED matrix
 #define CS_PIN 21
 #define DIN_PIN 18
@@ -12,12 +12,11 @@
 // Create the display object
 MD_MAX72XX matrix = MD_MAX72XX(HARDWARE_TYPE, DIN_PIN, CLK_PIN, CS_PIN, MAX_DEVICES);
 
-// Define the pin that the touch sensor is connected to
+// Define the pins that the touch sensors are connected to
 const int touchPins[4] = {15, 19, 22, 16};
 int score = 0;
-long fullDeisplayTime = 1000;
-long debounceDealy = 500;
 
+// Function to light a specific quadrant (4x4 area) on the 8x8 matrix.
 void lightQuads (int quadrant, bool quadState)
 {
   int rowStart;
@@ -67,7 +66,7 @@ void lightQuads (int quadrant, bool quadState)
   }
 }
 
-// Function for testing every LED on board works (turns on and off)
+// Function to light every LED on the board.
 void fullDisplay (bool state)
 {
   for (int r = 0; r < 8; r++)
@@ -79,14 +78,29 @@ void fullDisplay (bool state)
   }
 }
 
+// Function to flash the full display red three times.
+void roundFailEnd()
+{
+  for (int i = 0; i < 3; i++)
+  {
+    fullDisplay(true);
+    delay(250);
+    fullDisplay(false);
+    delay(250);
+  }
+}
+
 void setup() 
 {
   Serial.begin(115200);
+  Serial.println("\n--Game Begin--");
 
+  // Initialize the LED matrix and set light intensity.
   matrix.begin();
-  matrix.control(MD_MAX72XX::INTENSITY, 5);
+  matrix.control(MD_MAX72XX::INTENSITY, 15);
   matrix.clear();
 
+  // Setup touch sensor pins using INPUT_PULLUP, sensors read HIGH when untouched.
   for (int i = 0; i < 4; i++)
   {
     pinMode(touchPins[i], INPUT_PULLUP);
@@ -95,31 +109,53 @@ void setup()
 
 void loop() 
 {
-  // Flash display for a second
+  // Flash full display for 1 second at round start.
   fullDisplay(true);
+  Serial.println("-- Full display ON for round start --");
   delay(1000);
   matrix.clear();
 
-  //Choose random quadrant and light it up
-  int quadrant = random(0,4);
+  // Choose a random quadrant and light it.
+  int quadrant = random(0, 4);
   lightQuads(quadrant, true);
+  Serial.println("-- Quadrant lit. Awaiting correct touch... --");
 
-  // For now wait forever for correct sensor touch, can be adjusted.
-  // Uses INPUT_PULLUP so set sensors default state to high, reads low then touched.
-  while (digitalRead(touchPins[quadrant]) == HIGH)
+  // Wait for user input with timeout (2 seconds).
+  // First, wait until the correct sensor is released (HIGH).
+  while (digitalRead(touchPins[quadrant]) == LOW)
   {
-    delay(10); // check every 10ms for a touch.
+    delay(10);
   }
 
-  delay(500);
-
-  // Checking again, if sensor is still touch, then its correct.
-  if (digitalRead(touchPins[quadrant]) == LOW)
+  bool correctTouch = false;
+  long startMillis = millis();
+  while (millis() - startMillis < 2000)
   {
-    lightQuads (quadrant, false);
+    // Check if the correct sensor is pressed (should read LOW when touched).
+      if (digitalRead(touchPins[quadrant]) == LOW)
+      {
+        correctTouch = true;
+        break;
+      }
+    delay(10);
+  }
+
+  // Handle the outcome.
+  if (correctTouch == true)
+  {
+    Serial.println("!! CORRECT sensor touched !!");
+    lightQuads(quadrant, false); // Turn off the quadrant
     score++;
+    Serial.print("Score: ");
+    Serial.println(score);
   }
 
-  delay(500);
-}
+  else 
+  {
+    Serial.println("!! TIME OUT / WRONG SENSOR !!");
+    roundFailEnd();  // Flash full display red three times
+    delay(3000);     // Wait 3 seconds before a new round
+  }
 
+  delay(500); // Short pause before next round
+}
